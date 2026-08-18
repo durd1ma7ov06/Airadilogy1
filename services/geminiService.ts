@@ -5,7 +5,7 @@ import { authService } from "./authService";
  */
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const MODEL = 'google/gemini-3.6-flash'; // Gemini 3.6 Flash - OpenRouter to'g'ri ID
+const MODEL = 'google/gemini-3.6-flash'; // Gemini 3.6 Flash
 
 const LUNG_SYSTEM_PROMPT = `Siz professional radiologsiz. 
 O'pka rentgen tasvirini tahlil qiling. 
@@ -81,7 +81,7 @@ async function callOpenRouter(messages: any[]): Promise<string> {
       model: MODEL,
       messages: messages,
       temperature: 0.3,
-      max_tokens: 2048,
+      max_tokens: 8192,
     })
   });
 

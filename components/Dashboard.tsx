@@ -1,8 +1,6 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { analyzeLungImage } from '../services/geminiService';
-import { authService } from '../services/authService';
-import { Link } from 'react-router-dom';
 
 interface HistoryItem {
   id: string;
@@ -17,21 +15,11 @@ const Dashboard: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [history, setHistory] = useState<HistoryItem[]>([]);
-  const [lastAnalysisId, setLastAnalysisId] = useState<string | null>(null);
+  const [history, setHistory] = useState<HistoryItem[]>(() => {
+    const saved = localStorage.getItem('lung_history');
+    return saved ? JSON.parse(saved) : [];
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    loadHistory();
-  }, []);
-
-  const loadHistory = async () => {
-    const user = authService.getCurrentUser();
-    if (user?.email) {
-      const savedHistory = await authService.getUserHistory(user.email);
-      setHistory(savedHistory.filter((item: any) => item.type === 'lung'));
-    }
-  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -51,17 +39,24 @@ const Dashboard: React.FC = () => {
     if (!image) return;
     setIsAnalyzing(true);
     setResult(null);
-    setLastAnalysisId(null);
     setError(null);
 
     try {
       const { resultText, id } = await analyzeLungImage(image);
       setResult(resultText);
-      setLastAnalysisId(id);
-      loadHistory();
+
+      const newItem: HistoryItem = {
+        id,
+        timestamp: new Date().toLocaleString('uz-UZ'),
+        imageUrl: image,
+        report: resultText,
+        summary: resultText.substring(0, 120) + '...'
+      };
+      const updated = [newItem, ...history].slice(0, 20);
+      setHistory(updated);
+      localStorage.setItem('lung_history', JSON.stringify(updated));
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Tahlil jarayonida xatolik yuz berdi. Iltimos qaytadan urinib ko'ring.");
+      setError(err.message || "Tahlil jarayonida xatolik yuz berdi.");
     } finally {
       setIsAnalyzing(false);
     }
@@ -70,7 +65,6 @@ const Dashboard: React.FC = () => {
   const selectFromHistory = (item: HistoryItem) => {
     setImage(item.imageUrl);
     setResult(item.report);
-    setLastAnalysisId(item.id);
     setError(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -78,7 +72,6 @@ const Dashboard: React.FC = () => {
   const reset = () => {
     setImage(null);
     setResult(null);
-    setLastAnalysisId(null);
     setError(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -172,17 +165,6 @@ const Dashboard: React.FC = () => {
                   <div className="bg-white p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2.5rem] border border-indigo-50 shadow-inner text-slate-800 leading-relaxed font-bold whitespace-pre-wrap text-base sm:text-lg">
                     {result}
                   </div>
-
-                  {history.find(h => h.id === lastAnalysisId)?.doctor_comment && (
-                    <div className="bg-indigo-600 p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2.5rem] shadow-2xl shadow-indigo-200 text-white translate-y-2">
-                      <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] mb-3 opacity-80 flex items-center gap-2">
-                        <span>👨‍⚕️</span> SHIFOKOR XULOSASI
-                      </p>
-                      <p className="text-base sm:text-lg font-bold italic leading-relaxed">
-                        "{history.find(h => h.id === lastAnalysisId)?.doctor_comment}"
-                      </p>
-                    </div>
-                  )}
                 </div>
               )}
 
