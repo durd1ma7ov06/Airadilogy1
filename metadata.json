@@ -1,0 +1,7 @@
+{
+  "name": "PnevmoScan AI",
+  "description": "O'pka rentgen tasvirlarini tahlil qilish va o'pka kasalliklarini erta aniqlash uchun sun'iy intellektga asoslangan tizim.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
