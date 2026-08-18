@@ -98,15 +98,6 @@ const Dashboard: React.FC = () => {
           <p className="max-w-2xl mx-auto text-base sm:text-xl text-slate-700 font-semibold leading-relaxed px-4">
             Tasvirni yuklang va AI yordamida tezkor tibbiy xulosa oling.
           </p>
-          <div className="mt-8 sm:mt-10 flex justify-center px-4">
-            <Link
-              to="/conclusions"
-              className="w-full sm:w-auto bg-indigo-600 text-white px-8 py-4 rounded-2xl sm:rounded-[2rem] font-black text-xs sm:text-sm shadow-2xl shadow-indigo-200 hover:bg-indigo-700 hover:scale-105 transition-all flex items-center justify-center gap-3 group"
-            >
-              <span className="text-lg sm:text-xl group-hover:animate-bounce">👨‍⚕️</span>
-              SHIFOKOR XULOSALARI
-            </Link>
-          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-stretch mb-16">
