@@ -1,97 +1,261 @@
-
 <!DOCTYPE html>
 <html lang="uz">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PnevmoScan AI - Tibbiy Tahlil Platformasi</title>
+    <title>AiRadiology - AI-Powered Medical X-ray Analysis Platform</title>
+    <meta name="description" content="AI-powered X-ray analysis with Classification, Detection and Segmentation. Medical-grade accuracy in under 10 seconds.">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        body { 
-            font-family: 'Inter', sans-serif; 
-            margin: 0;
-            padding: 0;
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             overflow-x: hidden;
-            background-color: #f8fafc;
+            background-color: #050816;
+            color: #ffffff;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* ===== CUSTOM COLORS ===== */
+        .bg-medical-dark { background-color: #050816; }
+        .text-medical-cyan { color: #00E5FF; }
+
+        /* ===== GLASS MORPHISM - Premium ===== */
+        .glass-premium {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.05);
         }
         
-        @keyframes float {
-            0% { transform: translateY(0px) rotate(0deg); }
-            50% { transform: translateY(-15px) rotate(2deg); }
-            100% { transform: translateY(0px) rotate(0deg); }
+        .glass-dark {
+            background: rgba(11, 18, 32, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+        }
+
+        /* ===== ANIMATIONS ===== */
         @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
+            from { opacity: 0; transform: translateY(60px); filter: blur(10px); }
+            to   { opacity: 1; transform: translateY(0); filter: blur(0); }
+        }
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50%      { transform: translateY(-25px); }
+        }
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 0.1; }
+            50%      { opacity: 0.15; }
+        }
+        @keyframes ping-slow {
+            0%   { transform: scale(1); opacity: 0.5; }
+            100% { transform: scale(2.5); opacity: 0; }
+        }
+        @keyframes shimmer {
+            0%   { background-position: -200% center; }
+            100% { background-position: 200% center; }
+        }
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+        }
+        @keyframes blob {
+            0%, 100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; transform: translate(0, 0) scale(1); }
+            25%      { border-radius: 40% 60% 50% 50% / 30% 70% 40% 60%; transform: translate(30px, -30px) scale(1.08); }
+            50%      { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; transform: translate(-30px, 30px) scale(0.92); }
+            75%      { border-radius: 50% 50% 40% 60% / 70% 40% 60% 30%; transform: translate(30px, 30px) scale(1.05); }
+        }
+        @keyframes scan-animation {
+            0%   { top: 0; opacity: 0; }
+            10%  { opacity: 1; }
+            90%  { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+        @keyframes glow-pulse {
+            0%, 100% { 
+                box-shadow: 0 0 20px rgba(0, 229, 255, 0.3),
+                            0 0 40px rgba(0, 229, 255, 0.1); 
+            }
+            50%      { 
+                box-shadow: 0 0 40px rgba(0, 229, 255, 0.6),
+                            0 0 80px rgba(0, 229, 255, 0.2); 
+            }
+        }
+        @keyframes data-flow {
+            0%   { transform: translateY(-100%); opacity: 0; }
+            50%  { opacity: 1; }
+            100% { transform: translateY(100%); opacity: 0; }
+        }
+        @keyframes rotate-3d {
+            0%   { transform: perspective(1000px) rotateY(0deg); }
+            100% { transform: perspective(1000px) rotateY(360deg); }
+        }
+        @keyframes pulse-border {
+            0%, 100% { border-color: rgba(0, 229, 255, 0.2); }
+            50%      { border-color: rgba(0, 229, 255, 0.6); }
         }
 
-        .animate-float { animation: float 4s ease-in-out infinite; }
-        .animate-fade-in-up { animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-fade-in-up    { animation: fadeInUp 1s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        .animate-fade-in-down  { animation: fadeInDown 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        .animate-float         { animation: float 8s ease-in-out infinite; }
+        .animate-pulse-slow    { animation: pulse-slow 4s ease-in-out infinite; }
+        .animate-ping-slow     { animation: ping-slow 3s cubic-bezier(0, 0, 0.2, 1) infinite; }
+        .animate-spin-slow     { animation: spin-slow 25s linear infinite; }
+        .animate-blob          { animation: blob 12s ease-in-out infinite; }
+        .scan-animation        { animation: scan-animation 3s ease-in-out infinite; }
+        .animate-glow-pulse    { animation: glow-pulse 2s ease-in-out infinite; }
+        .animate-data-flow     { animation: data-flow 4s ease-in-out infinite; }
+        .animate-rotate-3d     { animation: rotate-3d 20s linear infinite; }
+        .animate-pulse-border  { animation: pulse-border 2s ease-in-out infinite; }
 
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.92);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.7);
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
+        .delay-50   { animation-delay: 0.05s; }
+        .delay-100  { animation-delay: 0.1s; }
+        .delay-200  { animation-delay: 0.2s; }
+        .delay-300  { animation-delay: 0.3s; }
+        .delay-400  { animation-delay: 0.4s; }
+        .delay-500  { animation-delay: 0.5s; }
+        .delay-1000 { animation-delay: 1s; }
+
+        .animation-delay-500  { animation-delay: 0.5s; }
+        .animation-delay-1000 { animation-delay: 1s; }
+        .animation-delay-2000 { animation-delay: 2s; }
+        .animation-delay-4000 { animation-delay: 4s; }
+
+        /* ===== SHIMMER TEXT ===== */
+        .shimmer-text {
+            background: linear-gradient(90deg, #00E5FF, #6C63FF, #00E5FF);
+            background-size: 300% auto;
+            -webkit-background-clip: text;
+            background-clip: text;
+            animation: shimmer 4s linear infinite;
         }
 
+        /* ===== SCROLLBAR ===== */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0B1220; }
+        ::-webkit-scrollbar-thumb { 
+            background: linear-gradient(180deg, #00E5FF, #6C63FF);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover { background: #00E5FF; }
+
+        /* ===== SMOOTH SCROLL ===== */
+        html { scroll-behavior: smooth; }
+
+        /* ===== MEDICAL GRID ===== */
+        .medical-grid {
+            background-image: 
+                linear-gradient(to right, rgba(0, 229, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(0, 229, 255, 0.03) 1px, transparent 1px);
+            background-size: 3rem 3rem;
+        }
+
+        /* ===== GLOW EFFECTS ===== */
+        .glow-cyan { box-shadow: 0 0 40px rgba(0, 229, 255, 0.4); }
+        .glow-blue { box-shadow: 0 0 40px rgba(108, 99, 255, 0.4); }
+        .glow-purple { box-shadow: 0 0 40px rgba(124, 58, 237, 0.4); }
+
+        /* ===== PREMIUM BORDERS ===== */
+        .border-premium {
+            border: 1px solid rgba(0, 229, 255, 0.1);
+            transition: border-color 0.3s ease;
+        }
+        .border-premium:hover {
+            border-color: rgba(0, 229, 255, 0.3);
+        }
+
+        /* ===== OVERLAY ===== */
+        .overlay-light {
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: blur(4px);
+        }
+
+        /* ===== MEDICAL FOCUS ===== */
+        .medical-focus {
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .medical-focus:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 60px rgba(0, 229, 255, 0.2);
+        }
+
+        /* ===== INPUT STYLES ===== */
         .input-glass {
-            background: rgba(255, 255, 255, 1) !important;
-            border: 2px solid #e2e8f0;
-            color: #0f172a !important; 
-            font-weight: 600;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(0, 229, 255, 0.2);
+            color: #ffffff;
+            font-weight: 500;
+            transition: all 0.2s;
         }
-
         .input-glass:focus {
-            border-color: #4f46e5;
-            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+            border-color: #00E5FF;
+            box-shadow: 0 0 0 4px rgba(0, 229, 255, 0.1);
+            outline: none;
+            background: rgba(255, 255, 255, 0.08);
+        }
+        .input-glass::placeholder {
+            color: rgba(255, 255, 255, 0.4);
         }
 
-        /* Umumiy tibbiy fon rasm - Barcha bo'limlar uchun */
-        .medical-main-bg, .dashboard-bg, .diabetes-bg, .uzi-bg, .auth-bg {
+        /* ===== DASHBOARD BACKGROUNDS ===== */
+        .dashboard-bg, .uzi-bg {
             background-image: url('https://api.darakchi.uz/media/news_preview/2025/03/24/Tuberkulez.medium.webp');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
-            background-repeat: no-repeat;
-            min-height: 100vh;
         }
 
-        .overlay-dark {
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.6) 100%);
+        /* ===== LOADING ANIMATION ===== */
+        @keyframes loading {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50%      { transform: scale(1.1); opacity: 0.7; }
         }
+        .loading { animation: loading 1.5s ease-in-out infinite; }
 
-        .overlay-light {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(3px);
+        /* ===== PREMIUM BUTTON ===== */
+        .btn-premium {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
-
-        /* Custom scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f5f9; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .btn-premium::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        .btn-premium:hover::before {
+            width: 300px;
+            height: 300px;
+        }
     </style>
-<script type="importmap">
-{
-  "imports": {
-    "react-router-dom": "https://esm.sh/react-router-dom@^7.13.0",
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "react": "https://esm.sh/react@^19.2.4",
-    "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
+    <link rel="stylesheet" href="/index.css">
 </head>
 <body>
     <div id="root"></div>
-<script type="module" src="/index.tsx"></script>
+    <script type="module" src="/index.tsx"></script>
 </body>
 </html>
