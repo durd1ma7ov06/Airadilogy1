@@ -119,7 +119,7 @@ async function callOpenRouter(messages: any[]): Promise<string> {
       model: MODEL,
       messages: messages,
       temperature: 0.3,
-      max_tokens: 8192,
+      max_tokens: 4096,
     })
   });
 
