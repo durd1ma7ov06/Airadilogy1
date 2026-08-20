@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { analyzeLungImage } from '../services/geminiService';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { analyzeLungImage, analyzeLungSegmentation } from '../services/geminiService';
 
 interface HistoryItem {
   id: string;
@@ -8,6 +8,225 @@ interface HistoryItem {
   report: string;
   summary: string;
 }
+
+interface Segment {
+  id: number;
+  label: string;
+  labelUz: string;
+  type: string;
+  confidence: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  severity: string;
+  color: string;
+}
+
+interface SegmentationResult {
+  segments: Segment[];
+  overallDiagnosis: string;
+  overallDiagnosisUz: string;
+  confidence: number;
+  normalAreas: string;
+  normalAreasUz: string;
+}
+
+// Segmentation Canvas Overlay
+const SegmentationOverlay: React.FC<{
+  image: string;
+  segmentation: SegmentationResult;
+}> = ({ image, segmentation }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [activeSegment, setActiveSegment] = useState<Segment | null>(null);
+  const [canvasSize, setCanvasSize] = useState({ w: 0, h: 0 });
+
+  const drawSegments = useCallback(() => {
+    const canvas = canvasRef.current;
+    const img = imgRef.current;
+    if (!canvas || !img || !img.complete) return;
+
+    const w = img.naturalWidth  || img.width;
+    const h = img.naturalHeight || img.height;
+    canvas.width  = img.width;
+    canvas.height = img.height;
+    setCanvasSize({ w: img.width, h: img.height });
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const scaleX = img.width  / w;
+    const scaleY = img.height / h;
+
+    segmentation.segments.forEach(seg => {
+      const x  = seg.x * img.width;
+      const y  = seg.y * img.height;
+      const sw = seg.width  * img.width;
+      const sh = seg.height * img.height;
+
+      // Colored fill
+      ctx.fillStyle = seg.color + '30';
+      ctx.fillRect(x, y, sw, sh);
+
+      // Animated border
+      ctx.strokeStyle = seg.color;
+      ctx.lineWidth   = 3;
+      ctx.setLineDash([8, 4]);
+      ctx.strokeRect(x, y, sw, sh);
+      ctx.setLineDash([]);
+
+      // Corner markers
+      const cs = 12;
+      ctx.strokeStyle = seg.color;
+      ctx.lineWidth   = 3;
+      [[x, y], [x + sw, y], [x, y + sh], [x + sw, y + sh]].forEach(([cx, cy], i) => {
+        ctx.beginPath();
+        const h1 = i < 2 ? cs : -cs;
+        const v1 = i % 2 === 0 ? cs : -cs;
+        ctx.moveTo(cx, cy + h1); ctx.lineTo(cx, cy); ctx.lineTo(cx + v1, cy);
+        ctx.stroke();
+      });
+
+      // Label badge
+      const label = seg.labelUz || seg.label;
+      ctx.font      = 'bold 12px Inter, sans-serif';
+      const tw      = ctx.measureText(label).width;
+      const badgeX  = x;
+      const badgeY  = y > 24 ? y - 28 : y + sh + 4;
+      ctx.fillStyle = seg.color;
+      ctx.beginPath();
+      ctx.roundRect(badgeX, badgeY, tw + 56, 24, 6);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(label, badgeX + 8, badgeY + 16);
+      ctx.fillText(`${seg.confidence}%`, badgeX + tw + 14, badgeY + 16);
+    });
+  }, [segmentation]);
+
+  useEffect(() => {
+    const img = imgRef.current;
+    if (!img) return;
+    img.onload = drawSegments;
+    if (img.complete) drawSegments();
+  }, [drawSegments, image]);
+
+  const getClickedSegment = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect  = canvas.getBoundingClientRect();
+    const mx    = (e.clientX - rect.left) * (canvas.width  / rect.width);
+    const my    = (e.clientY - rect.top)  * (canvas.height / rect.height);
+    const found = segmentation.segments.find(seg => {
+      const x = seg.x * canvas.width, y = seg.y * canvas.height;
+      return mx >= x && mx <= x + seg.width * canvas.width
+          && my >= y && my <= y + seg.height * canvas.height;
+    });
+    setActiveSegment(found || null);
+  };
+
+  const severityColor = (s: string) =>
+    s === 'high' ? 'text-red-400' : s === 'medium' ? 'text-yellow-400' : 'text-green-400';
+
+  return (
+    <div className="space-y-4">
+      {/* Canvas container */}
+      <div className="relative rounded-2xl overflow-hidden border-2 border-cyan-500/30 bg-slate-900">
+        <img
+          ref={imgRef}
+          src={image}
+          alt="X-ray"
+          className="w-full object-contain"
+          style={{ maxHeight: '420px' }}
+          onLoad={drawSegments}
+        />
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 w-full h-full cursor-crosshair"
+          onClick={getClickedSegment}
+        />
+
+        {/* Overall badge */}
+        <div className="absolute top-3 left-3 px-3 py-2 glass-premium rounded-xl border border-cyan-500/30">
+          <div className="text-cyan-400 text-xs font-bold">AI Segmentatsiya</div>
+          <div className="text-white text-sm font-bold">{segmentation.overallDiagnosisUz}</div>
+          <div className="text-slate-400 text-xs">{segmentation.confidence}% ishonch</div>
+        </div>
+
+        {/* Scan line animation */}
+        <div className="absolute w-full h-0.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent opacity-60 scan-animation pointer-events-none"></div>
+      </div>
+
+      {/* Active segment popup */}
+      {activeSegment && (
+        <div className="glass-premium rounded-xl p-4 border border-cyan-500/30 animate-fade-in-up">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-full" style={{ backgroundColor: activeSegment.color }}></div>
+              <span className="text-white font-bold">{activeSegment.labelUz}</span>
+            </div>
+            <button onClick={() => setActiveSegment(null)} className="text-slate-400 hover:text-white">✕</button>
+          </div>
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div className="glass-premium rounded-lg p-2">
+              <div className="text-cyan-400 text-xs mb-1">Ishonch</div>
+              <div className="text-white font-bold">{activeSegment.confidence}%</div>
+            </div>
+            <div className="glass-premium rounded-lg p-2">
+              <div className="text-cyan-400 text-xs mb-1">Daraja</div>
+              <div className={`font-bold text-sm ${severityColor(activeSegment.severity)}`}>
+                {activeSegment.severity === 'high' ? 'Yuqori' : activeSegment.severity === 'medium' ? "O'rta" : 'Past'}
+              </div>
+            </div>
+            <div className="glass-premium rounded-lg p-2">
+              <div className="text-cyan-400 text-xs mb-1">Tur</div>
+              <div className="text-white font-bold text-xs capitalize">{activeSegment.type}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Segment list */}
+      <div className="space-y-2">
+        {segmentation.segments.map(seg => (
+          <div
+            key={seg.id}
+            onClick={() => setActiveSegment(seg)}
+            className="glass-premium rounded-xl p-3 border cursor-pointer hover:scale-105 transition-all"
+            style={{ borderColor: seg.color + '40' }}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full animate-pulse" style={{ backgroundColor: seg.color }}></div>
+                <span className="text-white text-sm font-semibold">{seg.labelUz}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-bold ${severityColor(seg.severity)}`}>
+                  {seg.severity === 'high' ? '⚠️ Yuqori' : seg.severity === 'medium' ? "⚡ O'rta" : '✅ Past'}
+                </span>
+                <span className="text-cyan-400 text-sm font-bold">{seg.confidence}%</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Normal areas */}
+      {segmentation.normalAreasUz && (
+        <div className="glass-premium rounded-xl p-3 border border-emerald-500/20">
+          <div className="flex items-center gap-2">
+            <span className="text-emerald-400 text-lg">✅</span>
+            <div>
+              <div className="text-emerald-400 text-xs font-bold mb-0.5">Normal hududlar</div>
+              <div className="text-slate-300 text-sm">{segmentation.normalAreasUz}</div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // Premium Result Card Component
 const ResultCard: React.FC<{ text: string }> = ({ text }) => {
@@ -89,7 +308,10 @@ const ResultCard: React.FC<{ text: string }> = ({ text }) => {
 const Dashboard: React.FC = () => {
   const [image, setImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isSegmenting, setIsSegmenting] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const [segmentation, setSegmentation] = useState<SegmentationResult | null>(null);
+  const [activeTab, setActiveTab] = useState<'report' | 'segmentation'>('report');
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>(() => {
     try { return JSON.parse(localStorage.getItem('lung_history') || '[]'); }
@@ -115,6 +337,7 @@ const Dashboard: React.FC = () => {
     setIsAnalyzing(true);
     setResult(null);
     setError(null);
+    setSegmentation(null);
     try {
       const { resultText, id } = await analyzeLungImage(image);
       setResult(resultText);
@@ -126,6 +349,15 @@ const Dashboard: React.FC = () => {
       const updated = [newItem, ...history].slice(0, 15);
       setHistory(updated);
       localStorage.setItem('lung_history', JSON.stringify(updated));
+
+      // Auto segmentatsiya boshlash
+      setIsSegmenting(true);
+      try {
+        const seg = await analyzeLungSegmentation(image);
+        setSegmentation(seg);
+      } catch { /* segmentatsiya xatoligi hisobot ko'rsatishga ta'sir qilmaydi */ }
+      finally { setIsSegmenting(false); }
+
     } catch (err: any) {
       setError(err.message || "Tahlil jarayonida xatolik.");
     } finally {
@@ -135,6 +367,7 @@ const Dashboard: React.FC = () => {
 
   const reset = () => {
     setImage(null); setResult(null); setError(null);
+    setSegmentation(null); setActiveTab('report');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -262,13 +495,82 @@ const Dashboard: React.FC = () => {
               )}
             </div>
 
+            {/* Tabs */}
+            {result && (
+              <div className="flex gap-2 mb-5">
+                <button
+                  onClick={() => setActiveTab('report')}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                    activeTab === 'report'
+                      ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg'
+                      : 'glass-premium border border-cyan-500/20 text-slate-300 hover:text-white'
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Hisobot
+                </button>
+                <button
+                  onClick={() => setActiveTab('segmentation')}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                    activeTab === 'segmentation'
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-600 text-white shadow-lg'
+                      : 'glass-premium border border-purple-500/20 text-slate-300 hover:text-white'
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                  </svg>
+                  Segmentatsiya
+                  {isSegmenting && (
+                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  )}
+                  {segmentation && !isSegmenting && (
+                    <span className="w-5 h-5 bg-white/20 rounded-full text-xs flex items-center justify-center">
+                      {segmentation.segments.length}
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
+
             <div className="flex-grow overflow-y-auto custom-scrollbar">
               {error && (
                 <div className="glass-premium border border-rose-500/30 rounded-xl p-4 text-rose-400 text-sm font-medium">
                   ⚠️ {error}
                 </div>
               )}
-              {result && <ResultCard text={result} />}
+
+              {/* Report Tab */}
+              {activeTab === 'report' && result && <ResultCard text={result} />}
+
+              {/* Segmentation Tab */}
+              {activeTab === 'segmentation' && (
+                <>
+                  {isSegmenting && !segmentation && (
+                    <div className="flex flex-col items-center justify-center py-12">
+                      <div className="relative mb-6">
+                        <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                        <div className="absolute inset-2 border-4 border-pink-500/30 border-t-transparent rounded-full animate-spin animation-delay-500"></div>
+                      </div>
+                      <p className="text-purple-400 font-bold text-sm tracking-wider uppercase animate-pulse">
+                        AI Segmentatsiya qilmoqda...
+                      </p>
+                    </div>
+                  )}
+                  {segmentation && image && (
+                    <SegmentationOverlay image={image} segmentation={segmentation} />
+                  )}
+                  {!isSegmenting && !segmentation && result && (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <div className="text-4xl mb-4">🔬</div>
+                      <p className="text-slate-400 text-sm">Segmentatsiya ma'lumoti yo'q</p>
+                    </div>
+                  )}
+                </>
+              )}
+
               {!result && !isAnalyzing && !error && (
                 <div className="h-full flex flex-col items-center justify-center text-center py-12">
                   <div className="w-24 h-24 glass-premium rounded-full flex items-center justify-center mb-6 border border-cyan-500/20">
